@@ -193,6 +193,14 @@
             margin-top: 0.5rem;
         }
         
+        .key-item .key-command code {
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        
         .hidden {
             display: none;
         }
@@ -252,9 +260,21 @@
                     <input type="number" id="key-length" value="16" min="4" max="64">
                 </div>
                 
+                <div class="form-group">
+                    <label for="minecraft-command">Команда Minecraft:</label>
+                    <input type="text" id="minecraft-command" placeholder="Например: /give @p diamond 64">
+                    <small style="display: block; margin-top: 5px; color: #777;">
+                        Команда, которая будет выполнена на сервере Minecraft при использовании ключа.
+                    </small>
+                </div>
+                
                 <button id="generate-btn">Сгенерировать ключ</button>
                 
                 <div class="result" id="result"></div>
+                <div id="command-display" class="hidden" style="margin-top: 0.5rem; padding: 0.5rem; background-color: #f5f5f5; border-radius: 5px;">
+                    <div><strong>Команда Minecraft:</strong></div>
+                    <code id="command-code" style="display: block; margin-top: 0.3rem; word-break: break-all;"></code>
+                </div>
                 
                 <div class="button-group">
                     <button class="copy-btn" id="copy-btn">Копировать</button>
@@ -288,6 +308,11 @@
                         <input type="text" id="file-path" placeholder="keys.yml" value="keys.yml">
                     </div>
                     
+                    <div class="form-group">
+                        <label for="branch-name">Название ветки:</label>
+                        <input type="text" id="branch-name" placeholder="main" value="main">
+                    </div>
+                    
                     <button id="save-github-settings">Сохранить настройки</button>
                 </div>
                 
@@ -296,7 +321,8 @@
                         <strong>Подключено к GitHub!</strong>
                         <p style="margin-top: 0.5rem;">
                             Репозиторий: <span id="connected-repo"></span><br>
-                            Файл: <span id="connected-file"></span>
+                            Файл: <span id="connected-file"></span><br>
+                            Ветка: <span id="connected-branch"></span>
                         </p>
                     </div>
                     <button id="logout-github">Выйти</button>
@@ -320,6 +346,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const keyTypeSelect = document.getElementById('key-type');
             const keyLengthInput = document.getElementById('key-length');
+            const minecraftCommandInput = document.getElementById('minecraft-command');
             const generateBtn = document.getElementById('generate-btn');
             const resultDiv = document.getElementById('result');
             const copyBtn = document.getElementById('copy-btn');
@@ -332,10 +359,12 @@
             const repoNameInput = document.getElementById('repo-name');
             const tokenInput = document.getElementById('token');
             const filePathInput = document.getElementById('file-path');
+            const branchNameInput = document.getElementById('branch-name');
             const githubLoginDiv = document.getElementById('github-login');
             const githubConnectedDiv = document.getElementById('github-connected');
             const connectedRepoSpan = document.getElementById('connected-repo');
             const connectedFileSpan = document.getElementById('connected-file');
+            const connectedBranchSpan = document.getElementById('connected-branch');
             const logoutGithubBtn = document.getElementById('logout-github');
             const refreshKeysBtn = document.getElementById('refresh-keys');
             const keysListDiv = document.getElementById('keys-list');
@@ -351,6 +380,7 @@
                 repoNameInput.value = githubConfig.repo;
                 tokenInput.value = githubConfig.token;
                 filePathInput.value = githubConfig.path;
+                branchNameInput.value = githubConfig.branch || 'main';
                 updateGithubStatus(true);
             }
             
@@ -376,13 +406,14 @@
                 const repo = repoNameInput.value.trim();
                 const token = tokenInput.value.trim();
                 const path = filePathInput.value.trim() || 'keys.yml';
+                const branch = branchNameInput.value.trim() || 'main';
                 
                 if (!owner || !repo || !token) {
                     showToast('Пожалуйста, заполните все поля', '#f44336');
                     return;
                 }
                 
-                const config = { owner, repo, token, path };
+                const config = { owner, repo, token, path, branch };
                 localStorage.setItem('githubConfig', JSON.stringify(config));
                 githubConfig = config;
                 
@@ -402,7 +433,8 @@
             
             refreshKeysBtn.addEventListener('click', () => {
                 if (githubConfig) {
-                    loadKeysFromGithub();
+                    // Проверяем и обновляем raw-файл перед загрузкой
+                    checkAndUpdateRawFile();
                 } else {
                     showToast('Сначала настройте подключение к GitHub', '#f44336');
                 }
@@ -418,6 +450,19 @@
                 }
             });
             
+            minecraftCommandInput.addEventListener('input', () => {
+                const commandDisplay = document.getElementById('command-display');
+                const commandCode = document.getElementById('command-code');
+                const command = minecraftCommandInput.value.trim();
+                
+                if (command) {
+                    commandCode.textContent = command;
+                    commandDisplay.classList.remove('hidden');
+                } else {
+                    commandDisplay.classList.add('hidden');
+                }
+            });
+            
             generateBtn.addEventListener('click', generateKey);
             copyBtn.addEventListener('click', copyToClipboard);
             saveBtn.addEventListener('click', saveKeyToGithub);
@@ -428,6 +473,7 @@
                     githubConnectedDiv.classList.remove('hidden');
                     connectedRepoSpan.textContent = `${githubConfig.owner}/${githubConfig.repo}`;
                     connectedFileSpan.textContent = githubConfig.path;
+                    connectedBranchSpan.textContent = githubConfig.branch || 'main';
                     saveBtn.disabled = false;
                 } else {
                     githubLoginDiv.classList.remove('hidden');
@@ -490,6 +536,18 @@
                 resultDiv.textContent = key;
                 currentKey = key;
                 currentKeyType = keyType;
+                
+                // Обновляем отображение команды Minecraft
+                const commandDisplay = document.getElementById('command-display');
+                const commandCode = document.getElementById('command-code');
+                const command = minecraftCommandInput.value.trim();
+                
+                if (command) {
+                    commandCode.textContent = command;
+                    commandDisplay.classList.remove('hidden');
+                } else {
+                    commandDisplay.classList.add('hidden');
+                }
             }
             
             function generateRandomKey(length) {
@@ -548,7 +606,7 @@
                     return;
                 }
                 
-                const { owner, repo, token, path } = githubConfig;
+                const { owner, repo, token, path, branch = 'main' } = githubConfig;
                 
                 // Получаем текущее содержимое файла
                 fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
@@ -570,37 +628,41 @@
                     return response.json();
                 })
                 .then(data => {
-                    let keys = [];
+                    let keysData = {};
                     let sha = null;
                     
                     if (data.content) {
                         const decodedContent = atob(data.content);
                         try {
-                            keys = jsyaml.load(decodedContent) || [];
-                            if (!Array.isArray(keys)) keys = [];
+                            keysData = jsyaml.load(decodedContent) || {};
                         } catch (e) {
                             console.error('Ошибка при парсинге YAML:', e);
-                            keys = [];
+                            keysData = {};
                         }
                         sha = data.sha;
                     }
                     
-                    // Добавляем новый ключ
-                    const newKey = {
-                        value: currentKey,
-                        type: currentKeyType,
-                        created_at: new Date().toISOString()
+                    // Генерируем уникальный идентификатор для ключа
+                    const keyId = `key_${new Date().getTime()}`;
+                    
+                    // Создаем новый ключ в формате согласно примеру
+                    keysData[keyId] = {
+                        value: [currentKey],
+                        minecraft_command: minecraftCommandInput.value.trim() || null
                     };
                     
-                    keys.unshift(newKey);
-                    
                     // Ограничиваем количество ключей до 100
-                    if (keys.length > 100) {
-                        keys = keys.slice(0, 100);
+                    const keyIds = Object.keys(keysData);
+                    if (keyIds.length > 100) {
+                        // Удаляем старые ключи
+                        const idsToRemove = keyIds.slice(0, keyIds.length - 100);
+                        idsToRemove.forEach(id => {
+                            delete keysData[id];
+                        });
                     }
                     
                     // Сериализуем в YAML
-                    const yamlContent = jsyaml.dump(keys);
+                    const yamlContent = jsyaml.dump(keysData);
                     
                     // Обновляем файл на GitHub
                     return updateGithubFile(path, yamlContent, sha);
@@ -608,6 +670,9 @@
                 .then(response => {
                     if (response.ok) {
                         showToast('Ключ успешно сохранен в GitHub!', '#4CAF50');
+                        
+                        // Принудительно обновляем raw-файл
+                        forceUpdateRawFile();
                     } else {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
@@ -618,13 +683,40 @@
                 });
             }
             
+            // Функция для принудительного обновления raw-файла
+            function forceUpdateRawFile() {
+                if (!githubConfig) return;
+                
+                const { owner, repo, path, branch = 'main' } = githubConfig;
+                
+                // Даем GitHub время на обработку изменений
+                setTimeout(() => {
+                    // Формируем URL raw-файла с параметром времени для обхода кэширования
+                    const timestamp = new Date().getTime();
+                    const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}?t=${timestamp}`;
+                    
+                    // Выполняем запрос к raw-файлу для принудительного обновления
+                    fetch(rawUrl, { method: 'GET', cache: 'no-store' })
+                        .then(response => {
+                            if (response.ok) {
+                                console.log('Raw-файл успешно обновлен');
+                            } else {
+                                console.warn('Raw-файл не доступен сразу после обновления, это нормально');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Ошибка при обновлении raw-файла:', error);
+                        });
+                }, 2000); // Задержка в 2 секунды
+            }
+            
             function updateGithubFile(path, content, sha) {
-                const { owner, repo, token } = githubConfig;
+                const { owner, repo, token, branch = 'main' } = githubConfig;
                 
                 const body = {
                     message: 'Добавлен новый ключ',
                     content: btoa(content),
-                    branch: 'main'
+                    branch: branch
                 };
                 
                 if (sha) {
@@ -645,13 +737,16 @@
             function loadKeysFromGithub() {
                 if (!githubConfig) return;
                 
-                const { owner, repo, token, path } = githubConfig;
+                const { owner, repo, token, path, branch = 'main' } = githubConfig;
                 
                 keysListDiv.innerHTML = '';
                 noKeysMessage.style.display = 'none';
                 loadingKeysDiv.classList.remove('hidden');
                 
-                fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                // URL с указанием ветки
+                const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+                
+                fetch(apiUrl, {
                     headers: {
                         'Authorization': `token ${token}`,
                         'Accept': 'application/vnd.github.v3+json'
@@ -670,11 +765,11 @@
                 })
                 .then(data => {
                     const decodedContent = atob(data.content);
-                    let keys = [];
+                    let keysData = {};
                     
                     try {
-                        keys = jsyaml.load(decodedContent) || [];
-                        if (!Array.isArray(keys)) {
+                        keysData = jsyaml.load(decodedContent) || {};
+                        if (typeof keysData !== 'object' || keysData === null) {
                             throw new Error('Неверный формат данных');
                         }
                     } catch (e) {
@@ -682,11 +777,11 @@
                         throw new Error('Ошибка при парсинге YAML');
                     }
                     
-                    if (keys.length === 0) {
+                    if (Object.keys(keysData).length === 0) {
                         throw new Error('Нет сохраненных ключей');
                     }
                     
-                    renderKeysList(keys);
+                    renderKeysList(keysData);
                 })
                 .catch(error => {
                     console.error('Ошибка при загрузке ключей:', error);
@@ -698,50 +793,74 @@
                 });
             }
             
-            function renderKeysList(keys) {
+            function renderKeysList(keysData) {
                 keysListDiv.innerHTML = '';
                 
-                keys.forEach(key => {
+                Object.entries(keysData).forEach(([keyId, keyData]) => {
                     const keyItem = document.createElement('div');
                     keyItem.className = 'key-item';
                     
+                    // Заголовок с ID ключа
+                    const keyHeader = document.createElement('div');
+                    keyHeader.className = 'key-header';
+                    keyHeader.textContent = keyId;
+                    keyHeader.style.fontWeight = 'bold';
+                    keyHeader.style.marginBottom = '0.5rem';
+                    keyHeader.style.color = '#333';
+                    keyItem.appendChild(keyHeader);
+                    
+                    // Значение ключа
                     const keyValue = document.createElement('div');
                     keyValue.className = 'key-value';
-                    keyValue.textContent = key.value;
                     
-                    const keyMeta = document.createElement('div');
-                    keyMeta.className = 'key-meta';
+                    // Обрабатываем разные форматы ключей
+                    let keyValueText = '';
+                    if (Array.isArray(keyData.value)) {
+                        keyValueText = keyData.value.join(', ');
+                    } else {
+                        keyValueText = String(keyData.value || '');
+                    }
                     
-                    const keyType = document.createElement('span');
-                    keyType.textContent = getKeyTypeName(key.type);
-                    
-                    const keyDate = document.createElement('span');
-                    keyDate.textContent = formatDate(new Date(key.created_at));
-                    
-                    keyMeta.appendChild(keyType);
-                    keyMeta.appendChild(keyDate);
-                    
+                    keyValue.textContent = keyValueText;
                     keyItem.appendChild(keyValue);
-                    keyItem.appendChild(keyMeta);
                     
+                    // Добавляем команду Minecraft, если она есть
+                    if (keyData.minecraft_command) {
+                        const commandDiv = document.createElement('div');
+                        commandDiv.className = 'key-command';
+                        commandDiv.innerHTML = `<strong>Команда:</strong> <code>${keyData.minecraft_command}</code>`;
+                        commandDiv.style.marginTop = '0.5rem';
+                        commandDiv.style.fontSize = '0.9rem';
+                        commandDiv.style.color = '#555';
+                        keyItem.appendChild(commandDiv);
+                        
+                        // Кнопка для копирования команды
+                        const copyCommandBtn = document.createElement('button');
+                        copyCommandBtn.textContent = 'Копировать команду';
+                        copyCommandBtn.style.marginTop = '0.5rem';
+                        copyCommandBtn.style.backgroundColor = '#ff9800';
+                        copyCommandBtn.style.fontSize = '0.8rem';
+                        copyCommandBtn.style.padding = '5px 10px';
+                        
+                        copyCommandBtn.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Предотвращаем срабатывание обработчика родительского элемента
+                            navigator.clipboard.writeText(keyData.minecraft_command).then(() => {
+                                showToast('Команда скопирована в буфер обмена!');
+                            });
+                        });
+                        
+                        keyItem.appendChild(copyCommandBtn);
+                    }
+                    
+                    // Обработчик клика для копирования ключа
                     keyItem.addEventListener('click', () => {
-                        navigator.clipboard.writeText(key.value).then(() => {
+                        navigator.clipboard.writeText(keyValueText).then(() => {
                             showToast('Ключ скопирован в буфер обмена!');
                         });
                     });
                     
                     keysListDiv.appendChild(keyItem);
                 });
-            }
-            
-            function getKeyTypeName(type) {
-                switch(type) {
-                    case 'random': return 'Случайный';
-                    case 'uuid': return 'UUID';
-                    case 'alphanumeric': return 'Буквенно-цифровой';
-                    case 'hex': return 'Шестнадцатеричный';
-                    default: return type;
-                }
             }
             
             function formatDate(date) {
@@ -761,6 +880,47 @@
                 setTimeout(() => {
                     toast.classList.remove('show');
                 }, 3000);
+            }
+            
+            // Функция для проверки и обновления raw-файла
+            function checkAndUpdateRawFile() {
+                if (!githubConfig) return;
+                
+                const { owner, repo, path, branch = 'main' } = githubConfig;
+                
+                // Проверяем raw-файл
+                const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+                
+                // Сначала проверяем файл через API
+                fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+                    headers: {
+                        'Authorization': `token ${githubConfig.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error(`Файл не найден через API GitHub`);
+                    }
+                })
+                .then(data => {
+                    // Теперь проверяем raw-файл
+                    return fetch(rawUrl, { cache: 'no-store' });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // Если raw-файл недоступен, показываем предупреждение
+                        showToast('Raw-файл пока не доступен. Это может занять некоторое время.', '#ff9800');
+                    }
+                    // В любом случае пробуем загрузить ключи
+                    loadKeysFromGithub();
+                })
+                .catch(error => {
+                    console.error('Ошибка при проверке файла:', error);
+                    showToast('Файл не найден. Сначала сохраните ключ.', '#f44336');
+                });
             }
             
             // Генерируем ключ при загрузке страницы
