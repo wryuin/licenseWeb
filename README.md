@@ -1,54 +1,32 @@
-# Генератор ключей
+# Key Generator
 
-Простое веб-приложение для генерации и хранения ключей различных форматов с сохранением в YAML-файл на GitHub.
+A simple web application for generating and storing keys of various formats with saving to a YAML file on GitHub.
 
-## Функции
+## Features
 
-- Генерация ключей разных типов: случайные, UUID, буквенно-цифровые, шестнадцатеричные
-- Настройка длины ключа (кроме UUID)
-- Сохранение ключей в YAML-файл в вашем репозитории GitHub
-- История сохраненных ключей
-- Копирование ключа в буфер обмена
+- Generation of different key types: random, UUID, alphanumeric, hexadecimal
+- Customizable key length (except for UUID)
+- Saving keys to a YAML file in your GitHub repository
+- History of saved keys
+- Copying keys to clipboard
 
-## Использование
+## Usage
 
-1. Откройте `index.html` в браузере
-2. Во вкладке "GitHub" введите:
-   - Имя пользователя GitHub
-   - Имя репозитория
-   - Персональный токен доступа GitHub (с правами на запись в репозиторий)
-   - Путь к YAML-файлу (по умолчанию `keys.yml`)
-3. Сохраните настройки
-4. Вернитесь на вкладку "Генератор" и создайте ключ
-5. Сохраните ключ в GitHub, нажав кнопку "Сохранить в GitHub"
+1. Open `index.html` in your browser
+2. In the "GitHub" tab, enter:
+   - GitHub username
+   - Repository name
+   - GitHub personal access token (with repository write permissions)
+   - Path to the YAML file (default is `keys.yml`)
+3. Save the settings
+4. Return to the "Generator" tab and create a key
+5. Save the key to GitHub by clicking the "Save to GitHub" button
 
-## Создание токена GitHub
+## Creating a GitHub Token
 
-1. Перейдите на страницу [Personal Access Tokens](https://github.com/settings/tokens) в настройках GitHub
-2. Нажмите "Generate new token" (Classic)
-3. Дайте токену описание
-4. Выберите разрешения:
-   - `repo` - полный доступ к репозиториям
-5. Создайте токен и сохраните его (токен показывается только один раз)
-
-## Структура YAML файла
-
-Ключи сохраняются в следующем формате:
-
-```yaml
-- value: "сгенерированный_ключ"
-  type: "тип_ключа"
-  created_at: "2023-07-14T12:34:56.789Z"
-```
-
-## Безопасность
-
-- Токен GitHub хранится только локально в вашем браузере (localStorage)
-- Все взаимодействие с GitHub происходит напрямую из браузера
-- Для безопасности рекомендуется создать токен с минимально необходимыми правами и использовать приватный репозиторий
-
-## Примечания
-
-- Для работы приложения требуется подключение к интернету
-- Если файл `keys.yml` не существует в репозитории, он будет создан автоматически
-- В истории сохраняется не более 100 последних ключей 
+1. Go to [Personal Access Tokens](https://github.com/settings/tokens) in GitHub settings
+2. Click "Generate new token" (Classic)
+3. Give your token a description
+4. Select permissions:
+   - `repo` - full access to repositories
+5. Create the token and save it (the token is shown only once)
