@@ -1,0 +1,14 @@
+key1:
+  value:
+    - "abc123"
+  minecraft_command: "give %player% diamond 5"
+
+key2:
+  value:
+    - "vip2023"
+  minecraft_command: "lp user %player% group add vip"
+
+key3:
+  value:
+    - "money500"
+  minecraft_command: "eco give %player% 1000" 

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Keys</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Генератор ключей</h1>
+        <div class="content">
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="generator">
+                        <i class="fas fa-key"></i> Генератор
+                    </button>
+                    <button class="tab-button" data-tab="github">
+                        <i class="fab fa-github"></i> GitHub
+                    </button>
+                    <button class="tab-button" data-tab="history">
+                        <i class="fas fa-history"></i> Ключи
+                    </button>
+                </div>
+                
+                <div class="tab-content active" id="generator-tab">
+                    <div class="form-group">
+                        <label for="key-type">Тип ключа:</label>
+                        <select id="key-type">
+                            <option value="random">Случайный</option>
+                            <option value="uuid">UUID</option>
+                            <option value="alphanumeric">Буквенно-цифровой</option>
+                            <option value="hex">Шестнадцатеричный</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="key-length">Длина ключа:</label>
+                        <input type="number" id="key-length" value="16" min="4" max="64">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="minecraft-command">Команда Minecraft:</label>
+                        <input type="text" id="minecraft-command" placeholder="Например: /give @p diamond 64">
+                        <small class="input-helper">
+                            Команда, которая будет выполнена на сервере Minecraft при использовании ключа.
+                        </small>
+                    </div>
+                    
+                    <button id="generate-btn">
+                        <i class="fas fa-bolt"></i> Сгенерировать ключ
+                    </button>
+                    
+                    <div class="result" id="result"></div>
+                    <div id="command-display" class="command-preview hidden">
+                        <div class="command-title">Команда Minecraft:</div>
+                        <code id="command-code"></code>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="copy-btn" id="copy-btn">
+                            <i class="fas fa-copy"></i> Копировать
+                        </button>
+                        <button class="save-btn" id="save-btn">
+                            <i class="fas fa-save"></i> Сохранить в GitHub
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="github-tab">
+                    <div id="github-login" class="github-auth">
+                        <div class="form-group">
+                            <label for="repo-owner">Имя пользователя GitHub:</label>
+                            <input type="text" id="repo-owner" placeholder="username">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="repo-name">Имя репозитория:</label>
+                            <input type="text" id="repo-name" placeholder="repository">
+                            <small class="input-helper">
+                                Репозиторий должен существовать. Если его нет, сначала создайте репозиторий на GitHub.
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="token">Токен доступа GitHub:</label>
+                            <input type="password" id="token" placeholder="ghp_xxxxxxxxxxxx">
+                            <small class="input-helper">
+                                Требуется личный токен доступа с правами на репозиторий.
+                                <a href="https://github.com/settings/tokens" target="_blank" class="link">Создать токен</a>
+                                <br>Необходимые разрешения: <code>repo</code> (для приватного репозитория)
+                                <br>Для публичного репозитория: <code>public_repo</code>
+                                <br>Срок действия токена: установите подходящий срок
+                                <br><strong>Внимание:</strong> Токен имеет доступ к вашему репозиторию.
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="file-path">Путь к YAML файлу:</label>
+                            <input type="text" id="file-path" placeholder="keys.yml" value="keys.yml">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="branch-name">Название ветки:</label>
+                            <input type="text" id="branch-name" placeholder="main" value="main">
+                        </div>
+                        
+                        <button id="save-github-settings">
+                            <i class="fas fa-save"></i> Сохранить настройки
+                        </button>
+                        
+                        <div class="alert-box">
+                            <h3 class="alert-title">
+                                <i class="fas fa-exclamation-triangle"></i> Частые проблемы и решения:
+                            </h3>
+                            <ul class="alert-list">
+                                <li><strong>Ошибка 401</strong> - Неверный токен или недостаточно прав. Убедитесь, что токен правильный.</li>
+                                <li><strong>Ошибка 404</strong> - Репозиторий или файл не найден. Проверьте данные.</li>
+                                <li><strong>Ошибка 403</strong> - Превышены лимиты GitHub API или нет доступа.</li>
+                                <li><strong>Ключи не отображаются</strong> - После сохранения может потребоваться время для обновления.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div id="github-connected" class="hidden">
+                        <div class="success-box">
+                            <i class="fas fa-check-circle"></i>
+                            <div class="success-details">
+                                <strong>Подключено к GitHub!</strong>
+                                <p>
+                                    Репозиторий: <span id="connected-repo"></span><br>
+                                    Файл: <span id="connected-file"></span><br>
+                                    Ветка: <span id="connected-branch"></span>
+                                </p>
+                            </div>
+                        </div>
+                        <p class="subtitle">
+                            Теперь вы можете генерировать и сохранять ключи в ваш приватный репозиторий.
+                            Сгенерированные ключи будут доступны во вкладке "Ключи".
+                        </p>
+                        <button id="logout-github">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="history-tab">
+                    <div class="history-header">
+                        <h2>Сохраненные ключи</h2>
+                        <button id="refresh-keys" class="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Обновить
+                        </button>
+                    </div>
+                    <div id="loading-keys" class="loading hidden"></div>
+                    <div id="keys-list">
+                        <p id="no-keys-message">Нет сохраненных ключей или не настроено подключение к GitHub.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i> Скопировано в буфер обмена!
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
